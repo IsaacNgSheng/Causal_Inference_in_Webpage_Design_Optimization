@@ -1,0 +1,99 @@
+---
+title: "Examples in Randomized Experiment"
+output:
+  html_document:
+    theme: simplex
+    code_folding: show
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: no
+    highlight: pygments
+    df_print: paged
+    fig_caption: no
+  pdf_document:
+    toc_depth: '3'
+fontsize: 18pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Generating Data Set
+We first generate a set of $N$ subjects who will participate in the experiment. Let $D_{i}\in\{0,1\}$ be a random variable representing the treatment assignment for subject $i$. $D_i=1$ means the subject $i$ is assigned to the treatment group and $D_i=0$ means the subject $i$ is assigned to the control group. Let $(Y_i(0),Y_i(1))$ be the (potential) outcomes of the subject $i$, e.g., time spent on the website under control and treatment intervention. 
+
+Let $Y_i(0)\sim ~N(\mu_0,\sigma_0^2)$ and $Y_i(1) = N(\mu_1,\sigma^2_1)$.
+```{r}
+set.seed(1) # initialize the seed of the random number generator
+N = 20 # total number of subjects participating in the experiment
+mu0 = 10
+sigma0 = 2
+mu1 = 20
+sigma1 = 2.5
+Y0 = rnorm(N,mu0,sigma0^2)
+Y1 = rnorm(N,mu1,sigma1^2)
+Data = data.frame(cbind(Y0,Y1)) # potential outcome of the sample
+names(Data) = c('Y0','Y1') 
+Data
+```
+Note that the population average treatment effect is give by $\tau_{fs}=\bar{Y}_i(1)-\bar{Y}_i(0)=\frac{1}{N}\sum_{i=1}^NY_i(1)-\frac{1}{N}\sum_{i=1}^NY_i(0)$, which equals `mean(Y1-Y0)=``r mean(Y1-Y0)`. This is the objective. We want to infer this number from this simulated experiment.
+
+## Assignment Procedure
+
+### Assignment is Independent of the Potential Outcomes
+Assume we flip a fair coin to determine the assignment of each subject (e.g., heads to the treatment and the tails to the control). To simulate the a random treatment assignment with this bernoual trials:
+```{r message=FALSE, warning=FALSE}
+library('mc2d')  
+# there are many ways to generate 
+# bernoulli random numbers: 1 means treatment
+Index = rbern(N, 0.5) 
+Index
+```
+In this case, we have `r sum(Index)` subjects being assigned to the treatment group. Hence, the observed averages in the treatment and control group are
+```{r}
+YobsT_avg = mean(Data[which(Index==1),'Y1'])
+YobsC_avg = mean(Data[which(Index==0),'Y0'])
+```
+We have $\bar{Y}^{obs}_T=$ `r YobsT_avg` and $\bar{Y}^{obs}_C=$ `r YobsC_avg`, which leads to $\hat{\tau}_{fs}=\bar{Y}^{obs}_T-\bar{Y}^{obs}_C=$ `r YobsT_avg-YobsC_avg`. It is close but not equal to the true population average treatment effect `r mean(Y1-Y0)`. 
+
+But if we reset the clock and execute this randomization procedure over and over again, then we have
+```{r}
+Rep = 10
+Diff = rep(0,Rep)
+for (i in seq(1,Rep,1))
+{
+ Index = rbern(N, 0.5)
+ Diff[i] = mean(Data[which(Index==1),'Y1'])-mean(Data[which(Index==0),'Y0'])
+ print(Diff[i])
+  }
+```
+Then we take the averages of these values of our estimator $\hat{\tau}_{fs}=\bar{Y}^{obs}_T-\bar{Y}^{obs}_C$ obtained from each realized randomized assignment, then we have $\frac{1}{R}\sum_{r=1}^R\hat{\tau}_{fs}^{(r)}=$ `r mean(Diff)`. The number is closer to the true population average treatment effect `r mean(Y1-Y0)`, but still not equal.
+
+If you reset the clock for more times and execute the randomization procedure, then we have
+```{r}
+Rep = 10000
+Diff = rep(0,Rep)
+for (i in seq(1,Rep,1))
+{
+ Index = rbern(N, 0.5)
+ Diff[i] = mean(Data[which(Index==1),'Y1'])-mean(Data[which(Index==0),'Y0'])
+}
+print(mean(Diff))
+```
+Then you can see that the expected value of $\frac{1}{R}\sum_{r=1}^R\hat{\tau}_{fs}^{(r)}=$ `r mean(Diff)` is very close to the true population average treatment effect `r mean(Y1-Y0)`, as governed by the law of large number (LLN). 
+
+### Assignment is NOT Independent of the Potential Outcomes
+So far the assignment is independent of the potential outcomes, i.e., it is solely determined by random a coin flip. Now we try another assignment procedure, which is not independent of the potential outcome. Specifically, we assign the subject $i$ to treatment 1 if and only if $Y_i(1)/Y_i(0)+\epsilon_i>10$, where $\epsilon_i\sim \mathcal{N}(0,1)$.
+```{r}
+Rep = 10000
+Diff2 = rep(0,Rep)
+Ratio = Y1/Y0
+for (i in seq(1,Rep,1))
+{
+ Index = (Ratio + rnorm(N,0,1)>10)
+ Diff[i] = mean(Data[which(Index==1),'Y1'])-mean(Data[which(Index==0),'Y0'])
+}
+print(mean(Diff))
+```
+You can see that even if we reset the clock `r Rep` times, still the expected value of $\frac{1}{R}\sum_{r=1}^R\hat{\tau}_{fs}^{(r)}$ is different from the true population average treatment effect `r mean(Y1-Y0)` substantially.

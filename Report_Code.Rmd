@@ -1,0 +1,368 @@
+---
+title: "BT4212 HW2"
+author: |
+  ```{=latex}
+  ```
+  \textit{Term: Fall 2024}
+date: |
+  ```{=latex}
+  ```
+  \textit{Individual assignment, due September 29, 23:59}
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    keep_tex: yes
+subtitle: Search Engine Optimization and Analytics
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999) # suppressing scientific notation
+set.seed(1) # do not remove this code
+```
+
+## Submission Instructions
+
+There are two ways to submit this assignment.
+
+1. Rmarkdown. (1) RMD file, and make sure the code is executable. An RMD file template is provided. (2) The PDF file generated from your R markdown.
+
+2. Choose the programming language that you are comfortable with to solve these problems. Submit one PDF document with questions and answers and put all source code in the appendix. Your result should be reproducible. 
+
+Rmarkdown approach is recommended but not required. 
+
+## Introduction to R Markdown
+
+First download R (https://www.r-project.org/) and RStudio (https://rstudio.com/products/rstudio/download/). There is a very active R community online You could find plenty of tutorials about R and Rmarkdown online. For example, this video teaches some basics about R and Rstudio (https://www.youtube.com/watch?v=_V8eKsto3Ug). The following is a very brief introduction to RMarkdown.
+
+You can open R Markdown documents in RStudio. You should see a command called "Knit", which allows you to "knit" the entire R Markdown file into a HTML document, or a PDF document, or a MS Word Document (note that for PDF, Tex distribution is needed; for MS Word, MS Word needs to be installed on your system).
+
+R Markdown is handy because it allows you to embed code and writeup into the same document, and it produces presentable output, so you can use it to generate reports from your homework, and, when you eventually go out to work in a company, for your projects.
+
+Here's how you embed a "chunk" of R code.
+
+```{r example-chunk, echo=TRUE}
+1+1
+```
+
+After the three apostrophes, you'll need `r`, then you can give the chunk a name. Please note that **names have to be single-word and no space is allowed**. Also, names have to be unique, that is, every chunk needs a **different** name. You can give chunks names like:
+
+- `chunk1`
+- `read-in-data`
+- `run-regression`
+
+Or, those that help you with homework:
+
+- `q1a-read-in-data`
+- `q1b-regression`
+
+These names are for you to help organize your code. (In practice it will be very useful when you have files with thousands of lines of code...). After the name of the chunk, you can give it certain options, separated by commas. I will highlight one important option. 
+
+- `echo=TRUE` means the code chunk will be copied into the output file. For homework purposes, **always** set `echo=TRUE` so we know what code you wrote. When you go out to work in a company and you want to produce professional-looking reports, feel free to set it to FALSE.
+
+
+There is a bit more syntax to learn using the R Markdown, but we don't need you to be an expert in R Markdown (although we do expect proficiency in R!). Hopefully, you can copy all the R Markdown syntax you need from the templates we provide. 
+
+
+Note about **working directory** in R Markdown. If you do not specify your working directory via `setwd('...')`, and you hit "Knit", the document will assume that the working directory is the directory that the `.rmd` file is in. Thus, if your rmd is in `XYZ/folder1/code.rmd` and your dataset is `XYZ/folder1/data.csv`, then you can simply run `d0 = read.csv('data.csv')` without running `setwd()`.
+
+
+## Problem 1. Short-Answer Questions (40')
+
+Throughout the problem, assume that the Stable Unit Treatment Value Assumption (SUTVA) holds true. Refer to thee slides of Lecture 4 or Rubin's book Chapter 1, if you find yourself unfamiliar with the concept. Following the convention of the notation in potential outcome framework, subscript 0 stands for the control group, and 1 stands for the treatment group.
+
+(a) Explain the meaning of $Y_i(0)$ and $Y_i(1)$ and why it is difficult to infer causality. (10')
+$Y_i(0)$ is the potential outcome for unit i without treatment, whereas $Y_i(1)$ is the potential outcome for unit i with treatment. In other words, they are the potential outcomes of individual i if they did not receive the treatment (for $Y_i(0)$) and if they did receive the treatment (for $Y_i(1)$).
+In the Potential Outcome Model, $Y^{obs}_{i} = D_iY_i(1) + (1-D_i)Y_i(0)$
+With $D_i$ being 1 if the treatment is administered to that particular individual, whereas $D_i$ is 0 when it isn't. In such a model, when $D_i$ is 1, $Y_i(0)$ ceases to exist, as $(1-D_i)$ = 0, and vice versa. Thus only one component, either $Y_i(1)$ or $Y_i(0)$ can exist in the observed outcome of subject i. 
+It is difficult to infer causality as $Y_i(0)$ and $Y_i(1)$ are counterfactuals of each other. If one is to exist, the other would not. Thus, not being able to observe $Y_i(1)$ and $Y_i(0)$ for the same individual i.
+This results in a missing data problem, where any treatent administered to one individual, it's counterfactual will be missing, thus being impossible to identify ti without further assumptions (where $ti = Y_i(1) - Y_i(0)$). Being unable to compare the $Y_i(1)$ and $Y_i(0)$ of a singular individual, we cannot observe the causal effect for that individual.
+In order to assume causality, certain assumptions of the potential outcome model must be adhered to. 
+This includes:
+1. Assuming potential outcomes are constant across individuals, resulting in cross-individual comparison being able to recover the individual causal effect
+2. Assuming potential outcomes are constant across time, then the before-after comparison is able to recover the individual causal effect ti.
+
+Since individual causal effects are fundamentally unobservable, we would have to adhere to those assumptions in order to attain the average causal effect in a population. Thus making it difficult to infer causality.
+
+
+(b) Explain the meaning of $Y^{obs}_{i}$. (5') 
+$Y^{obs}_{i}$ is the observed outcome of an individual subject, subject i. In practice, this will be the outcome that we see in the data collected. This is in conjunction with knowing whether the individual has received the treatment or not.
+
+
+(c) Explain the meaning of $\mathbb{E}[Y_i(0)|D_i=1]$, where a binary variable $D_i= 1$ if treated, 0 if untreated. (5')
+That is the expected value of the potential outcome of the individual when untreated, $Y_i(0)$, given that a treatment is administered to the individual. In other words, it is the counterfactual expectation value, as it represents what would have occurred if the individual was untreated instead of the them currently being treated.
+
+
+(d) Contrast the meaning of $\mathbb{E}[Y^{obs}_i|D_i = 1]$ with the meaning of $\mathbb{E}[Y_i(0)|D_i=1]$ and explain the meaning of their difference, i.e., $\mathbb{E}[Y^{obs}_i|D_i = 1] - \mathbb{E}[Y_i(0)|D_i=1]$. (10')
+$\mathbb{E}[Y^{obs}_i|D_i = 1]$ refers to the expected value of the observed outcome of the individual, $Y^{obs}_i$, given that the treatment has been administered. Whereas the meaning of $\mathbb{E}[Y_i(0)|D_i=1]$ is the expected value of the potential outcome of the individual when untreated, $Y_i(0)$, given that a treatment is administered to the individual as explained in c). As shown in the potential outcome model equation, $Y^{obs}_{i} = D_iY_i(1) + (1-D_i)Y_i(0)$, when $D_i = 1$, $Y^{obs}_i$ is equivalent to $Y_i$, making the difference $\mathbb{E}[Y^{obs}_i|D_i = 1] - \mathbb{E}[Y_i(0)|D_i=1]$ to be equivalent to $\mathbb{E}[Y_i(1)|D_i = 1] - \mathbb{E}[Y_i(0)|D_i=1]$. Such difference between the expected outcome of an individual who had been administered the treatment and it's counterfactual is the average treatment effect on the treated as the counterfactual expectation is unobservable.
+
+
+(e) Following part (d), please contrast the meaning of $\mathbb{E}[Y_i(1)-Y_i(0)|D_i=1]$ with $\mathbb{E}[Y_i(1) - Y_i(0)]$ and explain how randomized experiment helps to relate these two quantities. (10')
+$\mathbb{E}[Y_i(1)-Y_i(0)|D_i=1]$ is the average treatment effect on the treated (ATT) as it is the difference between the expected outcome of an individual who had been administered the treatment and it's counterfactual, as explained in d). $\mathbb{E}[Y_i(1) - Y_i(0)]$ on the other hand, is the Average treatment effect (ATE) on the particular individual. The ATE cannot be observed as in the Fundamental Problem of Causal Inference, we cannot observe both $Y_i(0)$ and $Y_i(1)$ for the same i. This is in contrast with the ATT which can be observed, as it is the average treatment effect between the treated and untreated after the treatment has been administered, thus including the condition of the treatment being administered, now making the expression estimatable through statistical methods.
+Randomized Experiments can help relate these quantities by ensuring that each potential outcome is independent from one another, leading to no interference between units or spill-over effects, adhering to the SUTVA assumptions.
+Randomization also ensures that the treatment and control groups are statistically equivalent on observed and unobserved characteristics, leading to no systematic differences between them other than the treatment itself.
+This random assignment makes it easier to estimate both ATT and ATE without bias. For ATE, it allows us to compare average outcomes between treatment and control group, and as the groups are comparable, the observed difference in outcomes can be attributed to the treatment effect, thus able to estimate ATE. For ATT, the difference in outcomes for the treated individuals compared to what they would have experienced without treatment can be inferred through randomization as it controls for selection bias.
+Overall if the treatment effects are constant across everyone, then ATT == ATE.
+
+
+## Problem 2. A/B Test on Webpage Design  (60') 
+
+As a web designer, you have developed two versions of webpages, denoted by 0 and 1, for the newly launched game Assassin's Guild by the company UdiSoft. The two webpages are almost identical except for Version 1 splits the "Download" button in Version 0 to two options "PC Download" and "PS4 Download". At a same day, you randomized the 20 countries/regions (with same size of) web traffic to these two versions and count the number of daily mouse-clicks for download (as for Version 1, count the sum of clicks to both options). Half of the countries/regions were randomly assigned to Version 0, and the rest were assigned to the Version 1. The result of the experiment was recorded in `expdta-click.csv`. 
+
+(a) Please load the input data and print the first 6 rows of the data. The data contains two columns with one being the observed daily clicks and the other being the treatment status. (5')
+
+```{r}
+set.seed(1) # please fix the random seed.
+
+# your code here
+data <- read.csv("expdta-click.csv")
+head(data)
+```
+
+
+(b) You believe that by splitting the download buttons help to boost the click-through rate. Let $Y_i$ denote the daily click and $D_i \in \{0,1\}$ be the treatment assignment for day $i = 1, 2,\ldots, 20$. You are considering a claim: "Version 1  of the web design increases the daily clicks by 2000, compared to the version 0 for all Internet traffic". 
+
+Please first formulate the claim in a testable null hypothesis $H_0$ (in terms of $Y_i(0)$ and $Y_i(1)$). (4')
+Testable Null Hypothesis $H0: Y_i(1) = Y_i(0) + 200$
+
+The null hypothesis could be easily formulated as:
+\[H_0: Y_i(1) = Y_i(0) + 2000\]
+
+Based on the null hypothesis $H_0$, what **would** be the table that describes the potential outcomes for all subjects in this experiment? Please print out the table.  
+(Hint: there should be 4 columns: 1st column displays the observed daily clicks; 2nd column displays the treatment status; 3rd column displays the $Y_i(1)$ under $H_0$; 4th column displays the $Y_i(0)$ under $H_0$). (6')
+
+Since $Y_i$ si the daily click,
+```{r Hypothesis Testing, echo=TRUE}
+# Extracting first 20 Daily Clicks and Treatments
+observed_daily_clicks <- data$dailyclick[1:20]
+treatment_status <- data$treatment[1:20]
+
+# Formulating H0_Yi(0) and H0_Yi(1)
+H0_Y0 <- ifelse(treatment_status == 0, observed_daily_clicks, observed_daily_clicks - 2000)
+H0_Y1 <- ifelse(treatment_status == 1, observed_daily_clicks, observed_daily_clicks + 2000)
+result <- data.frame(observed_daily_clicks, treatment_status, H0_Y1, H0_Y0)
+knitr::kable(result, caption="Potential Outcomes for all subjects")
+```
+
+
+(c) Let the test statistics be $T=\bar{Y}^{obs}_1-\bar{Y}^{obs}_0-2000$. Simulate the exact probability distribution of this test statistic $T$ under $H_0$ in a completely randomized experiment with equal number of subjects in each group. Please report (1) the total number of realizations of the randomized assignment vector, (2) the quartiles 25%, 50%, 75% of the distribution of the test statistic $T$, and (3) the standard deviation. (10') 
+Hint: Please read about **exact null hypothesis** or Fisher-Sharp null hypothesis. You could find the relevant discussion in Rubin's book [RI] sec 1-4, ch.5. You could install and load the library `gtools` and use the function `combinations` to help generate realizations of the randomized assignment vector. See: https://www.rdocumentation.org/packages/gtools/versions/3.9.3/topics/combinations). 
+
+```{r Simulation of Probability Distribution, echo=TRUE}
+library(gtools)
+
+num_of_instances <- nrow(result)
+num_of_treatment <- sum(result$treatment_status)
+combs <- combinations(num_of_instances, num_of_treatment) 
+
+# 1) Total number of realizations
+total_realizations <- nrow(combs)
+total_realizations
+T_values <- numeric(total_realizations)
+# Thus number of realizations is 167960
+
+# Computing distribution to attain quartiles
+distri <- apply(combs, 1, function(x) {
+  repe <- rep(0, num_of_instances)
+  repe[x] <- 1
+  mean(H0_Y1[repe == 1]) - mean(H0_Y0[repe == 0]) - 2000
+})
+
+# 2) Computing Quartiles and SD
+# Quartiles
+quartiles <- c(0.25, 0.50, 0.75)
+quantiles <- quantile(distri, probs = quartiles)
+quantiles
+# For 25th Quartile: -315.050505; For 50th Quartile: -3.131313; For 75th Quartile: 313.030303
+
+# 3) Standard deviation
+standard_deviation <- sd(distri)
+standard_deviation
+# The Standard Deviation is 448.4832
+
+```
+
+(d) Plot the histogram of this test statistic $T$ with `breaks = 50`. 
+For more information about plotting a histogram. Refer to https://www.datamentor.io/r-programming/histogram/. (5')
+
+```{r Plotting Histogram, echo=TRUE}
+# Plot the histogram with breaks = 50
+histo <- hist(distri, breaks = 50, main = "Histogram of Test Statistic T", 
+     xlab = "Test Statistic T", col = "lightblue", border = "black")
+
+# Mean Line
+abline(v = mean(distri), col = "pink", lwd = 2)
+
+max(histo$counts)
+```
+
+(e) Redo part (c) but using a Bernoulli trial for the randomized assignment. Repeat the Bernoulli trial `Num = 184756` times. Report (1) the quartiles 25%, 50%, 75% of the distribution of the test statistic $T$, and (2) the standard deviation. Compare the results with (c) and describe your finding. (5')
+
+```{r Bernoulli Trials, echo=TRUE}
+# Set the number of repetitions
+Num <- 184756
+
+bern_distri <- replicate(Num, {
+  binomi <- rbinom(num_of_instances, 1, 0.5)
+  mean(H0_Y1[binomi == 1]) - mean(H0_Y0[binomi == 0]) - 2000
+})
+
+# Compute the quartiles
+bern_probs <- c(0.25, 0.5, 0.75)
+quartiles_bernoulli <- quantile(bern_distri, probs = bern_probs)
+quartiles_bernoulli
+# For 25th Quartile: -320.5495; For 50th Quartile: -0.6000; For 75th Quartile: 320.1010
+
+# Compute the standard deviation
+sd_bernoulli <- sd(bern_distri)
+sd_bernoulli
+# The Standard Deviation is 459.2596
+
+# Compare with original results from part (c)
+# Plot histogram for Bernoulli results
+bernoulli_histo <- hist(bern_distri, breaks = 50, main = "Histogram of Test Statistic T (Bernoulli Trial)", 
+     xlab = "Test Statistic T", col = "lightblue", border = "black")
+abline(v = mean(bern_distri), col = "pink", lwd = 2)
+
+max(bernoulli_histo$counts)
+
+# When comparing the results with c), the mean test statistic T is the same, at 0, however the maximum frequency is much greater at 15284 as compared to the maximum frequency of c) being 7198.
+# The standard deviation on the other hand is relatively similar, at 459.2596 in the bernoulli trial, whereas c) has 448.4832.
+# In c), these are the quartiles: 25th Quartile: -315.050505; 50th Quartile: -3.131313; 75th Quartile: 313.030303
+# In the bernoulli trial, the quartiles are: 25th Quartile: -320.5495; 50th Quartile: -0.6000; 75th Quartile: 320.1010
+# AS you can tell, the quartiles and standard deviation are all roughly similar, showcasing a similar spread, along with a similar mean and standard deviation, having a relatively similar histogram other than the frequency. Both are bell-shaped to reflect the central limit theorem as well.
+
+# The distribution in C) would mimic a completely randomized experiment having equal numbers of subjects in each group, whereas the bernoulli trials have each subject being independently assigned to a group with a fixed probability, introducing more variability in the group sizes.
+```
+
+(f) Now for our observed experiment data, what is the value ($t_0$) of this test statistic $T$? If it is positive, then what is $Pr\{T\geq t_0\}$ under $H_0$ based on the Exact Probability Distribution of $T$ you have derived in the question (c)? If it is negative, then what is $Pr\{T\leq t_0\}$? What do you conclude for your $H_0$? (5')
+
+```{r Value of T-Stat, echo=TRUE}
+# Extract observed clicks for each treatment status
+observed_clicks_0 <- observed_daily_clicks[treatment_status == 0]
+observed_clicks_1 <- observed_daily_clicks[treatment_status == 1]
+
+# Calculate means
+mean_0 <- mean(observed_clicks_0)
+mean_1 <- mean(observed_clicks_1)
+mean_1
+mean_0
+# Calculate test statistic T
+t0 <- mean_1 - mean_0 - 2000
+
+# Print t0
+print(t0)
+p_value <- mean(T_values <= t0)
+p_value
+# Since the p-value is at 0.9946037, it is significantly higher than the level of significance of 5%. This indicates that we fail to reject H0, that H0: Yi(1) = Yi(0) + 2000 is not statistically significant, having the observed data being consistent with H0.
+
+```
+
+(g) Please compute the estimate of the Neyman variance estimator (Rubin's book [RI] sec 1-6, ch.6.). Print the estimate of the Neyman variance estimator, assuming the heterogenous variance. (5')
+Observe that the test statistic is still $T=\bar{Y}^{obs}_1-\bar{Y}^{obs}_0-2000$. The true variance of $T$ is $S^2_0/N_0+S^2_1/N_1-S^2_{0,1}/N$, where the subscript "0" or "1" represent the treatment status. The Neyman variance estimator ignores $S^2_{0,1}/N$.
+
+```{r Neyman Variance Estimator, echo=TRUE}
+# Split the data into treated and control groups
+Y_obs_1 <- observed_daily_clicks[treatment_status == 1]  # Treated group
+Y_obs_0 <- observed_daily_clicks[treatment_status == 0]  # Control group
+
+# Number of subjects in each group
+N1 <- length(Y_obs_1)
+N0 <- length(Y_obs_0)
+N <- N1 + N0
+
+# Calculate the sample variances for each group
+S2_1 <- var(Y_obs_1)
+S2_0 <- var(Y_obs_0)
+
+# Compute the Neyman variance estimator
+neyman_variance_estimate <- (S2_0 / N0) + (S2_1 / N1)
+neyman_variance_estimate
+# Thus the neyman variance estimate is 179367.4
+```
+
+(h) Using the estimate of the Neyman variance estimator, construct a 95% confidence interval, assuming normality. Based on the confidence interval you have derived, what do you conclude for your claim at the very beginning about the click through? (5')
+
+```{r Confidence Interval, echo=TRUE}
+# For 95% Confidence Interval, two-tailed
+z_alpha <- qnorm(1-0.05/2)
+z_alpha
+
+# Calculate standard error
+SE <- sqrt(neyman_variance_estimate)
+
+# Calculate the 95% confidence interval
+lower_bound <- (mean_1 - mean_0) - z_alpha * SE
+upper_bound <- (mean_1 - mean_0) + z_alpha * SE
+
+# Print the confidence interval
+cat("95% Confidence Interval: [", lower_bound, ",", upper_bound, "]\n")
+
+# Since the Confidence Interval includes 2000 (being [396.4859, 2056.645]), we fail to reject H0 that Y_i(1) = Y_i(0) + 2000
+# Conclusion: There is not enough evidence to reject my initial claim that the click-through rate for version 1 is 2000 more than version 0.
+```
+
+(i) Now let's consider an alternative test statistic $M=\max\{Y_1^{obs}\}-\min\{Y_0^{obs}\}-2000$.
+Generate the exact probability distribution of this test statistic $M$ under the null hypothesis. Report (1) the quartiles of the distribution of this new test statistic $M$, and (2) the standard deviation. Plot the histogram of this test statistic $G$ with `breaks = 100`. (5')
+
+```{r Alternative Test Statistic, echo=TRUE}
+Num <- 184756
+
+# Create placeholders for the results
+M_values <- numeric(Num)
+
+M_distri <- apply(combs, 1, function(x) {
+  repe <- rep(0, num_of_instances)
+  repe[x] <- 1
+  max(H0_Y1[repe == 1]) - min(H0_Y0[repe == 0]) - 2000
+})
+
+# Compute the quartiles with na.rm = TRUE
+quartiles_M <- quantile(M_distri, probs = c(0.25, 0.5, 0.75))
+quartiles_M
+# The Quartiles are: 2689 for 25th quartile, 3151 for 50th quartile and 3887 for 75th quartile.
+
+# Compute the standard deviation with na.rm = TRUE
+sd_M <- sd(M_distri)
+sd_M
+# The Standard Deviation is 693.6817
+
+# Plot histogram for the test statistic M
+hist(M_distri, breaks = 100, main = "Histogram of Test Statistic M (Bernoulli Trial)", 
+     xlab = "Test Statistic M", col = "lightblue", border = "black")
+abline(v = mean(M_distri, na.rm = TRUE), col = "pink", lwd = 2)
+```
+
+(j) Observe when sample size $N$ gets larger, e.g., $N=45$,  deriving the exact distribution of the statistic under Fisher Sharp Null Hypothesis becomes time consuming. You could try yourself to see how long it takes to run the code. In this case, we often use "bootstrap" instead, i.e., we will re-execute the randomized assignment procedure for $K$ times. Then, for each iteration, we randomly assign half of the subjects to the control group and the remaining to the treatment group, and we compute the value of our test statistic. Going back to the test statistics $T$. Set $K=100000$. Report (1) the quartiles of the distribution of the test statistic $T$, and (2) the standard deviation. Plot the histogram of this test statistic $T$ with `breaks = 50`. Compare the results with (c) and describe your findings. (5')
+
+```{r Bootstrap Fisher Sharp Null Hypothesis, echo=TRUE}
+set.seed(1)
+N <- 45
+K <- 100000
+
+bootstrap_T <- replicate(K, {
+  assignment <- sample(c(rep(0, num_of_instances/2), rep(1, num_of_instances/2)))
+  mean(result$H0_Y1[assignment == 1]) - mean(result$H0_Y1[assignment == 0])
+})
+
+# (1) Calculate quartiles of the test statistic T
+quartiles <- quantile(bootstrap_T, c(0.25, 0.50, 0.75), na.rm=TRUE)
+quartiles
+# The Quartiles are: -310.2 for 25th quartile, 1.8 for 50th quartile and 313.4 for 75th quartile.
+
+# (2) Calculate the standard deviation of the bootstrap distribution of T
+sd(bootstrap_T)
+# Standard deviation of the bootstrap distribution is 446.4583
+
+# (3) Plot the histogram of the bootstrap distribution of T with breaks = 50
+boostrap_hist <- hist(bootstrap_T, breaks = 50, main = "Bootstrap Distribution of Test Statistic T", 
+     xlab = "Test Statistic T", col = "skyblue", border = "white")
+abline(v = mean(bootstrap_T, na.rm = TRUE), col = "pink", lwd = 2)
+
+max(boostrap_hist$counts)
+
+# When comparing with c), the quartiles are relatively similar, being [-310.2, 1.8, 313.4] compared to C)'s [-315.050505, -3.131313, 313.030303], along with a similar stadnard deviation of 446.4583, this makes the general spread relatively similar. The mean of 0 for both situations is also present, displaying a similar bell curve shape for both with relatively same spread and mean. Granted there are small deviations, these differences are more likely due to random fluctuations in the sampling process. 
+# However, the frequency still differs as c) has a maximum frequency of 7198, and the bootstrap method has a smaller maximum frequency of 4310. This is likely due to the exact combinatorial method generating more realizations clustered around the mean value, whereas the bootstrap method relies on repeated random sampling, which leads to a less sharply peaked distribution.
+# Overall, the similar quartiles and standard deviation of the bootstrap method compared to the exact combinatorial method shows that it is an effective approximation when exact computation takes a lot of time. However the frequency is less concentrated around the mean due to the bootstrap randomness. This allows it to be a good approximation for large sample sizes.
+```

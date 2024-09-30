@@ -1,0 +1,161 @@
+---
+title: "Rubin's Causal Inference"
+author: "A Toy Example"
+output:
+  html_document:
+    theme: simplex
+    code_folding: show
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: no
+    highlight: pygments
+    df_print: paged
+    fig_caption: no
+  pdf_document:
+    toc_depth: '3'
+fontsize: 18pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999) # suppressing scientific notation
+```
+
+
+
+## Generating Data Set
+We first generate a population of $N$ (large) subjects. Let $D_{i}\in\{0,1\}$ be a random variable representing the treatment status of the subject $i$. $D_i=1$ means subject $i$ is assigned to be treated and $D_i=0$ means $i$ is assigned to the control group. Let $(Y_i(0),Y_i(1))$ be the (potential) outcomes of subject $i$. Let $M<N$ be a sample we draw from the population. Let $X_i\in\{0,1\}$ be an attribute of subject $i$, e.g., where $X_i=0$ means $i$ being female and $X_i=1$ means being male. This attribute might be used in the stratified experiment, i.e., one could first make 2 blocks, put all male in one block and all female in the other block, and then within each block, conduct a completely randomized experiment.
+
+Let $Y_i(0)\sim~N(\mu_0,\sigma_0^2)$ and $Y_i(1) = Y_i(0)+N(\mu_1,\sigma^2_1)$. Here I make $Y_i(0)$ and $Y_i(1)$ dependent, but it does not matter for our problem. Let $X_i=\mathbf{1}[\{Y_i(0)+Y_i(1)>\mu_0+\mu_1\}]$. Note that in the causal analysis, all we need is that the treatment assignment variable being independent of the potential outcomes. Whether the two potential outcomes correlated with each other and/or whether the potential outcomes correlated with the attributes of the subjects do not matter. However, if you make the assignment machanism based on the attribute, then you will have a a problem called "endogeneity". )
+
+Let's draw $M=1000$ simple random samples from the population (without replacement).
+
+```{r}
+set.seed(1)
+N = 100000
+M = 1000
+mu0 = 4
+sigma0=2
+mu1 = 10
+sigma1=4
+Y0 = rnorm(N,mu0,sigma0)
+Y1 = Y0+rnorm(N,mu1,sigma1)
+X = ifelse(Y0+Y1>mu0+mu1,1,0)
+Index = seq(1,N,1)
+SampleIndex = sample(Index,M, replace = FALSE)
+```
+Note that the population causal effect is give by $\tau_p=\mathbb{E}[Y_i(1)-Y_i(0)]$, which equals `mean(Y1-Y0)=``r mean(Y1-Y0)`.This is our goal of causal inference. We want to learn this number from the sample we draw. Observe how the simulated causal effect is closed to $\mu_1$.
+
+Now let's first conduct am experiment of Bernoulli trial, i.e., we flip a fair coin for each subject and if it is 1, the subject is assigned to the treatment group and 0 to the control group. Note that this randomized assignment is independent of the potential outcome $(Y_i(0),Y_i(1))$ and the attribute $X_i$.
+
+```{r}
+Assignment = rbinom(M, 1, 0.5)
+S = data.frame(cbind(Y0[SampleIndex],Y1[SampleIndex],X[SampleIndex],Assignment))
+names(S) = c('Y0','Y1','X','Treatment') 
+S$observed = S$Y0*(S$Treatment==0)+S$Y1*S$Treatment
+S$intercept = rep(1,M)
+head(S, 10)
+```
+Note that for the subjects whose treatment $D_i=1$, we only observe his $Y_i(1)$. For those whose treatment $D_i=0$, we only observe their $Y_i(0)$. Now, before we run the regression, we just use the Neyman estimator. First note that the finite sample causal effect is $\tau_{fs}=\frac{1}{M}\sum_{i=1}^M[Y_i(1)-Y_i(0)]$, in our sample this one equals `r mean(S$Y1-S$Y0)` (comparing to the population mean, which is `r mean(Y1-Y0)`). The Neyman estimator of $\tau_{fs}$ (as well as $\tau_{p}$) is $\hat{\tau}_{neyman}=\bar{Y}_t^{obs}-\bar{Y}^{obs}_c=\frac{1}{N_t}\sum_{i:D_i=1}Y_i(1)-\frac{1}{N_c}\sum_{i:D_i=0}Y_i(0)$, in our case, this equals to 
+
+```{r}
+Treated = which(S$Treatment>0)
+Control = which(S$Treatment<=0)
+Nt = length(Treated)
+Nc = length(Control)
+print(Nc)
+mean(S$Y1[Treated])-mean(S$Y0[Control])
+```
+We will verify that this Neyman variance estimator gives the same number as the output from the regression method. We now compute the two variance estimates of this Neyman estimator, one assumes homoscedasticity, i.e., same variance for $\{Y_i(0)\}_{i=1}^N$ and $\{Y_i(1)\}_{i=1}^N$ (we know in our example, it is not the case) and the other one assumes heteroscedasticity, i.e., different variance. Note that the default standard error output by the regression is the homoscedasticity one, and it also has a "robust" standard error, which is for the case of heteroscedasticity.
+
+$s^2_c=\frac{1}{N_c-1}\sum_{i:D_i=0}[Y_i(0)-\bar{Y}^{obs}_c]^2$ and $s^2_t=\frac{1}{N_t-1}\sum_{i:D_i=1}[Y_i(1)-\bar{Y}^{obs}_t]^2$
+```{r}
+SCsquare = 1/(Nc-1)*sum((S$Y0[Control]-mean(S$Y0[Control]))^2)
+STsquare = 1/(Nt-1)*sum((S$Y1[Treated]-mean(S$Y1[Treated]))^2)
+Ssquare = 1/(M-2)*(SCsquare*(Nc-1)+STsquare*(Nt-1))
+```
+Then $\hat{V}_{homo}=s^2(1/N_c+1/N_t)=$ `Ssquare*(1/Nc+1/Nt)=``r Ssquare*(1/Nc+1/Nt)` (see details in section 6.5, page 94 and section 7.4, page 120-121, RI) and $\hat{V}_{heter}=s^2_c/N_c+s^2_t/N_t=$ `SCsquare/Nc+STsquare/Nt=``r SCsquare/Nc+STsquare/Nt` . So these 2 estimates of the variance are almost the same. Now, let's run a regression first, without the attribute $X$.
+```{r}
+Model1 = lm(S$observed~S$Treatment)
+summary(Model1)
+Model1$coefficients
+coef(summary(Model1))[, "Std. Error"]^2
+```
+Now you can see clearly that the output of the linear regression model has $\hat{\tau}_{ols}=\hat{\tau}_{diff}=$ `r Model1$coefficients[2]`. This should not be surprising, as they are mathematically equivalent. Moreover, observe that the linear regression model in R by default uses the homoscedastic variance, the number is exactly the same as $\hat{V}_{homo}$.
+
+To check the robust standard error, we need to load 2 packages
+```{r,message=F}
+library(sandwich)
+library(lmtest)
+
+# To obtain the Neyman sampling variance estimator with heteoskasticity. 
+# Call 'HC2' in sandwich package. 
+coeftest(Model1, vcov = vcovHC(Model1, "HC2"))    # robust; HC2 
+(coeftest(Model1, vcov = vcovHC(Model1, "HC2"))[2,2])^2
+```
+This gives the exact number to the $\hat{V}_{heter}$ as we've derived above. There are also different versions of the robust standard error see [here](https://stats.stackexchange.com/questions/117052/replicating-statas-robust-option-in-r).
+
+```{r}
+# check that "sandwich" returns different robust standard errors.
+coeftest(Model1, vcov = sandwich)  # robust; sandwich
+(coeftest(Model1, vcov = sandwich)[2,2])^2
+coeftest(Model1, vcov = vcovHC(Model1, "HC0"))    # robust; HC0 
+(coeftest(Model1, vcov = vcovHC(Model1, "HC0"))[2,2])^2
+# reproduce the HC1 (Stata default)
+coeftest(Model1, vcov = vcovHC(Model1, "HC1"))   
+(coeftest(Model1, vcov = vcovHC(Model1, "HC1"))[2,2])^2
+# HC3 
+coeftest(Model1, vcov = vcovHC(Model1, "HC3"))
+(coeftest(Model1, vcov = vcovHC(Model1, "HC3"))[2,2])^2
+```
+
+As a summary, the Neyman estimator generates the same set of estimates and variance as in the simple linear regression, i.e., with no other covariates except for $D_i$. 
+
+Now let's add one covariate, $X_i$, to the regression model and verify that if the coefficient of $D_i$ remains the same.
+
+```{r}
+Model2 = lm(S$observed~S$Treatment+S$X)
+summary(Model2)
+Model2$coefficients
+coef(summary(Model2))[, "Std. Error"]^2
+```
+We can see that the coefficient in `Model2` of the treatment variable $D_i$ is not equal to the coefficient in `Model1` (the simple linear regression model), but their values are very close nonetheless. In theory, these two estimators converge to the same quantity, i.e., average causal effect in the population. As the sample size increases, the coefficient converges to the true value of $\tau_p$. The point of adding covariates in the regression model is to 1) control the risk of omitted variables that confound the causal effect, if the experimenter feels that the treatment assignnment is not entirely completely; 2) reduce the variance of the estimator. You can see that the variance of the estimator in `Model2` is less than that in `Model1`.
+
+## Non-randomized Assignment
+Assume that subject $i$ "chooses" to join the treatment group if and only if $Y_i(1)/Y_i(0)>X_i+\epsilon$, where $\epsilon\sim N(1,1)$.
+
+First, let's generate the "choice" of subjects in the population.
+```{r}
+Assignment2 = ifelse(Y1/Y0>X+rnorm(1,1),1,0)
+P = data.frame(cbind(Y0,Y1,X,Assignment2))
+names(P) = c('Y0','Y1','X','Treatment') 
+head(P, 10)
+sum(P$Treatment)/N
+sum(P$X)/N
+```
+We randomly sample $M=$ `r M` subjects from this population
+```{r}
+SampleIndex = sample(Index,M, replace = FALSE)
+DataSet = P[SampleIndex,]
+DataSet$observed = DataSet$Y0*(DataSet$Treatment==0)+DataSet$Y1*DataSet$Treatment
+```
+Now we run a linear regression without covariates $X$.
+```{r}
+Model3 = lm(DataSet$observed~DataSet$Treatment)
+summary(Model3)
+```
+You can see that the coefficient of $D_i$ is no longer close to the population average causal effect `r mean(Y1-Y0)`. But it is "close" to $\mathbb{E}[Y^{obs}_i|D_i=1]-\mathbb{E}[Y^{obs}_i|D_i=0]$.
+```{r}
+mean(P$Y1[which(P$Treatment>0)])-mean(P$Y0[which(P$Treatment<=0)])
+```
+This is especially true when we increase the sample size $M$, e.g., 
+```{r}
+M=50000
+SampleIndex = sample(Index,M, replace = FALSE)
+DataSet = P[SampleIndex,]
+DataSet$observed = DataSet$Y0*(DataSet$Treatment==0)+DataSet$Y1*DataSet$Treatment
+Model3 = lm(DataSet$observed~DataSet$Treatment)
+summary(Model3)
+```
+This is how we observe the so called ``selection bias'' via a simulated experiment. 
